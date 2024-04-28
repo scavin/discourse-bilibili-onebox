@@ -2,8 +2,9 @@
 
 # name: discourse-bilibili-onebox
 # about: A Discourse plugin to embed Bilibili videos
-# version: 0.1
+# version: 0.2
 # authors: Appinn
+# url: https://github.com/scavin/discourse-bilibili-onebox/
 
 after_initialize do
   module ::Onebox
