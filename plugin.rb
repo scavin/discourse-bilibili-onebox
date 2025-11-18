@@ -12,11 +12,15 @@ after_initialize do
       class BilibiliOnebox
         include Onebox::Engine
 
-        REGEX = /^https?:\/\/(www|m)\.bilibili\.com\/video\/(.*?)(?=\/|\?|$)/
-        matches_regexp REGEX
+        REGEX = /https?:\/\/(www|m)\.bilibili\.com\/video\/([A-Za-z0-9]+)(?:\/|\/?\?.*)?/
+        INLINE_REGEX = /href="https?:\/\/(www|m)\.bilibili\.com\/video\/([A-Za-z0-9]+)(?:\/|\/?\?.*)?"[^>]*?class="inline-onebox"/
+        matches_regexp Regexp.union(REGEX, INLINE_REGEX)
 
         def to_html
-          video_id = @url.match(REGEX)[2]
+          match = REGEX.match(@url) || INLINE_REGEX.match(@url)
+          return unless match
+
+          video_id = match[2]
           "<iframe src='https://player.bilibili.com/player.html?bvid=#{video_id}&high_quality=1&autoplay=0' scrolling='no' border='0' frameborder='no' width='100%' height='430' allowfullscreen='true'></iframe>"
         end
       end
