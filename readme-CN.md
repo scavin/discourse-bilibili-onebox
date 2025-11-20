@@ -62,9 +62,7 @@ https://www.bilibili.com/
 
 ### 使用效果
 
-https://www.bilibili.com/video/BV1Em411B7m3/
-
-https://www.bilibili.com/video/BV1Em411B7m3
+https://meta.appinn.net/t/topic/55832
 
 ### 维护计划
 
