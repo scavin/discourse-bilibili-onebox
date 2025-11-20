@@ -1,6 +1,6 @@
 # name: discourse-bilibili-onebox
 # about: A Discourse plugin to embed Bilibili videos
-# version: 0.2
+# version: 1.0
 # authors: Appinn
 # url: https://meta.appinn.net/t/topic/55832
 
