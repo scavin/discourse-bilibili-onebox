@@ -44,11 +44,11 @@ Then rebuild:
 
 Paste a Bilibili URL on its own line inside the composer. Links copied from the mobile share dialog also work. Examples:
 
-* `https://www.bilibili.com/video/BV1Xw4m12744/?share_source=copy_web&vd_source=be7dd26febc616d50c50`
-* `https://m.bilibili.com/video/BV1Xw4m12744?buvid=Z943139958166C09&is_story_h5=false&mid=bD8izjDQ%3D%3D&plat_id=147&share_from=ugc&share_medium=iphon`
-* `https://www.bilibili.com/video/BV1Xw4m12744/`
-* `https://www.bilibili.com/video/BV1Xw4m12744`
-* `https://b23.tv/PAjRV1w`
+* `https://www.bilibili.com/video/BV1WEgJzMEK3/?spm_id_from=333.1387.homepage.video_card.click`
+* `https://www.bilibili.com/video/BV1WEgJzMEK3/?spm_id_from=333.1387.homepage.video_card.click&vd_source=b0a719e1950c150a97859195679d417a`
+* `https://www.bilibili.com/video/BV1WEgJzMEK3/`
+* `https://www.bilibili.com/video/BV1WEgJzMEK3`
+* `https://b23.tv/hiS7rgR`
 
 The old bug where URLs without a trailing slash refused to render has been fixed.
 
