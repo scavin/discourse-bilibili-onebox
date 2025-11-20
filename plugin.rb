@@ -44,7 +44,7 @@ after_initialize do
 
           Discourse.cache.fetch(cache_key, expires_in: 1.day) do
             begin
-              resolved = FinalDestination.new(url, max_redirects: 5, timeout: 2).resolve
+              resolved = FinalDestination.new(url, max_redirects: 5, timeout: 5).resolve
               extract_video_id(resolved) if resolved
             rescue StandardError => e
               Rails.logger.warn("[discourse-bilibili-onebox] short link resolve failed: #{e.message}")
