@@ -1,13 +1,13 @@
-# frozen_string_literal: true
-
-require "uri"
-require_dependency "final_destination"
-
 # name: discourse-bilibili-onebox
 # about: A Discourse plugin to embed Bilibili videos
 # version: 0.2
 # authors: Appinn
 # url: https://meta.appinn.net/t/topic/55832
+
+# frozen_string_literal: true
+
+require "uri"
+require_dependency "final_destination"
 
 after_initialize do
   module ::Onebox
