@@ -54,7 +54,7 @@ The old bug where URLs without a trailing slash refused to render has been fixed
 
 ### Allowed iframes
 
-Screenshot reference: <https://h1.appinn.me/file/1736215861521_Screen-20250107100857@2x.jpg>
+![Allowed iframes configuration](./Screen-20250107100857@2x.jpg)
 
 ```
 https://player.bilibili.com/
