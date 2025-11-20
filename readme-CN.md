@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | :discourse: | **摘要** | **Discourse Bilibili Onebox** 是一个可以让 Discourse 社区直接播放 Bilibili 视频的插件。 |
 | :hammer_and_wrench: | **项目库链接** | [https://github.com/scavin/discourse-bilibili-onebox/](https://github.com/scavin/discourse-bilibili-onebox/) |
+| :movie_camera: | **Demo** | [https://meta.appinn.net/t/topic/55832](https://meta.appinn.net/t/topic/55832) |
 | :open_book: | **安装指南（英文）** | [How to install plugins in Discourse](https://meta.discourse.org/t/install-plugins-in-discourse/19157) |
 
 代码很简单，由 AI 生成，已经在小众软件论坛使用。**不会**自动播放。

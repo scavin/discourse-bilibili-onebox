@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | :discourse: | **Summary** | **Discourse Bilibili Onebox** lets any Discourse community play Bilibili videos inline without leaving the topic. |
 | :hammer_and_wrench: | **Repository** | [https://github.com/scavin/discourse-bilibili-onebox/](https://github.com/scavin/discourse-bilibili-onebox/) |
+| :movie_camera: | **Demo** | [https://meta.appinn.net/t/topic/55832](https://meta.appinn.net/t/topic/55832) |
 | :open_book: | **Install guide** | [How to install plugins in Discourse](https://meta.discourse.org/t/install-plugins-in-discourse/19157) |
 
 The code is intentionally tiny (AI-assisted) and already powers the Appinn community. Videos **never** autoplay.
