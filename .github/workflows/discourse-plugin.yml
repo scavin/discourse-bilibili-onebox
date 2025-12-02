@@ -1,11 +1,7 @@
-name: Discourse Plugin
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-
-jobs:
-  ci:
-    uses: discourse/.github/.github/workflows/discourse-plugin.yml@v1
+name: discourse-bilibili-onebox
+about: A Discourse plugin to embed Bilibili videos
+version: 1.0
+authors: Appinn
+url: https://github.com/scavin/discourse-bilibili-onebox
+branches:
+  - beta
