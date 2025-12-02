@@ -66,7 +66,7 @@ after_initialize do
     end
   end
 
-  DiscourseEvent.on(:post_process_cooked) do |doc, post|
+  on(:post_process_cooked) do |doc, post|
     doc.css("a[href]").each do |link|
       href = link["href"]
       begin
