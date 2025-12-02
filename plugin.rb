@@ -15,8 +15,8 @@ after_initialize do
       class BilibiliOnebox
         include Onebox::Engine
 
-        REGEX = /https?:\/\/(www|m)\.bilibili\.com\/video\/([A-Za-z0-9]+)(?:\/|\/?\?.*)?/
-        INLINE_REGEX = /href="https?:\/\/(www|m)\.bilibili\.com\/video\/([A-Za-z0-9]+)(?:\/|\/?\?.*)?"[^>]*?class="inline-onebox"/
+        REGEX = %r{\Ahttps?://(www|m)\.bilibili\.com/video/([A-Za-z0-9]+)(?:[/?#].*)?\z}
+        INLINE_REGEX = /href="https?:\/\/(www|m)\.bilibili\.com\/video\/([A-Za-z0-9]+)(?:[\/?#].*)?"[^>]*?class="inline-onebox"/
         SHORT_LINK_REGEX = %r{\Ahttps?://b23\.tv/[A-Za-z0-9]+/?(?:\?.*)?\z}
         matches_regexp Regexp.union(REGEX, INLINE_REGEX)
 
@@ -34,22 +34,24 @@ after_initialize do
 
           slug =
             begin
-              URI.parse(url).path.delete_prefix("/")
+              URI.parse(url).path.delete_prefix("/").sub(%r{/*\z}, "")
             rescue URI::InvalidURIError
               nil
             end
           return if slug.blank?
 
           cache_key = "bilibili-short-link:#{slug}"
+          cached_video_id = Discourse.cache.read(cache_key)
+          return cached_video_id if cached_video_id.present?
 
-          Discourse.cache.fetch(cache_key, expires_in: 1.day) do
-            begin
-              resolved = FinalDestination.new(url, max_redirects: 5, timeout: 5).resolve
-              extract_video_id(resolved) if resolved
-            rescue StandardError => e
-              Rails.logger.warn("[discourse-bilibili-onebox] short link resolve failed: #{e.message}")
-              nil
-            end
+          begin
+            resolved = FinalDestination.new(url, max_redirects: 5, timeout: 5).resolve
+            video_id = extract_video_id(resolved) if resolved
+            Discourse.cache.write(cache_key, video_id, expires_in: 1.day) if video_id.present?
+            video_id
+          rescue StandardError => e
+            Rails.logger.warn("[discourse-bilibili-onebox] short link resolve failed: #{e.message}")
+            nil
           end
         end
 
@@ -65,8 +67,20 @@ after_initialize do
   end
 
   DiscourseEvent.on(:post_process_cooked) do |doc, post|
-    doc.css("a[href*='b23.tv']").each do |link|
+    doc.css("a[href]").each do |link|
       href = link["href"]
+      begin
+        uri = URI.parse(href)
+      rescue URI::InvalidURIError
+        next
+      end
+      next unless uri.host == "b23.tv"
+
+      # 仅替换块级短链：<p><a href="https://b23.tv/xxx">https://b23.tv/xxx</a></p>
+      parent = link.parent
+      next unless parent&.name == "p" && parent.children.count == 1
+      next unless link.text.strip == href
+
       video_id = ::Onebox::Engine::BilibiliOnebox.resolve_short_link(href)
       next unless video_id
 
