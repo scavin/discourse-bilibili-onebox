@@ -77,8 +77,9 @@ after_initialize do
 
       # 仅替换块级裸链接，避免句中/列表等被误替换
       parent = link.parent
-      next unless parent&.name == "p" && parent.children.count == 1
-      next unless link.text.strip == href
+      next unless parent&.name == "p"
+      next unless parent.element_children.length == 1 && parent.element_children.first == link
+      next unless parent.text.strip == href
 
       case uri.host
       when "b23.tv"
