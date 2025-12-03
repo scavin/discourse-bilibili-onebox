@@ -74,14 +74,19 @@ after_initialize do
       rescue URI::InvalidURIError
         next
       end
-      next unless uri.host == "b23.tv"
 
-      # 仅替换块级短链：<p><a href="https://b23.tv/xxx">https://b23.tv/xxx</a></p>
+      # 仅替换块级裸链接，避免句中/列表等被误替换
       parent = link.parent
       next unless parent&.name == "p" && parent.children.count == 1
       next unless link.text.strip == href
 
-      video_id = ::Onebox::Engine::BilibiliOnebox.resolve_short_link(href)
+      case uri.host
+      when "b23.tv"
+        video_id = ::Onebox::Engine::BilibiliOnebox.resolve_short_link(href)
+      when "www.bilibili.com", "m.bilibili.com"
+        video_id = ::Onebox::Engine::BilibiliOnebox.extract_video_id(href)
+      end
+
       next unless video_id
 
       iframe = ::Onebox::Engine::BilibiliOnebox.iframe_html(video_id)
