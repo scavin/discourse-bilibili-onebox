@@ -75,11 +75,16 @@ after_initialize do
         next
       end
 
-      # 仅替换块级裸链接，避免句中/列表等被误替换
+      classes = (link["class"] || "").split
+
+      # 块级裸链接或 onebox 链接才替换，避免句中/列表被误替换
       parent = link.parent
-      next unless parent&.name == "p"
-      next unless parent.element_children.length == 1 && parent.element_children.first == link
-      next unless parent.text.strip == href
+      block_link =
+        parent&.name == "p" &&
+          parent.element_children.length == 1 &&
+          parent.element_children.first == link &&
+          parent.text.strip == href
+      next unless block_link || classes.include?("onebox")
 
       case uri.host
       when "b23.tv"
