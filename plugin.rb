@@ -53,7 +53,11 @@ after_initialize do
                 normalized_url,
                 max_redirects: 5,
                 timeout: 5,
-                request_headers: { "User-Agent" => "Mozilla/5.0" },
+                request_headers: {
+                  "User-Agent" =>
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+                    "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
+                },
               ).resolve
             video_id = extract_video_id(resolved) if resolved
             Discourse.cache.write(cache_key, video_id, expires_in: 1.day) if video_id.present?
