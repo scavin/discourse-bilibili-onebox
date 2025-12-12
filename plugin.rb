@@ -44,8 +44,11 @@ after_initialize do
           cached_video_id = Discourse.cache.read(cache_key)
           return cached_video_id if cached_video_id.present?
 
+          # b23 在带尾部 / 时可能返回 200 JSON (-404)，不跳转；强制使用标准化 URL 以确保 302 跳转
+          normalized_url = "https://b23.tv/#{slug}"
+
           begin
-            resolved = FinalDestination.new(url, max_redirects: 5, timeout: 5).resolve
+            resolved = FinalDestination.new(normalized_url, max_redirects: 5, timeout: 5).resolve
             video_id = extract_video_id(resolved) if resolved
             Discourse.cache.write(cache_key, video_id, expires_in: 1.day) if video_id.present?
             video_id
