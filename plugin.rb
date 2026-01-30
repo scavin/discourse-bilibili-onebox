@@ -69,6 +69,9 @@ after_initialize do
                     "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
                 },
               ).resolve
+            Rails.logger.info(
+              "[discourse-bilibili-onebox] short link resolved to: #{resolved.inspect}",
+            )
             video_id = extract_video_id(resolved) if resolved
             Discourse.cache.write(cache_key, video_id, expires_in: 1.day) if video_id.present?
             if video_id.present?
