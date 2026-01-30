@@ -68,6 +68,28 @@ after_initialize do
           end
         end
 
+        # 将 raw 文本中“单独成行”的 b23 短链接展开为完整的 Bilibili 视频链接。
+        def self.expand_short_links(raw)
+          return raw if raw.blank?
+
+          raw
+            .lines
+            .map do |line|
+              newline = line.end_with?("\n") ? "\n" : ""
+              content = line.delete_suffix("\n")
+              stripped = content.strip
+              next line unless stripped.match?(SHORT_LINK_REGEX)
+
+              video_id = resolve_short_link(stripped)
+              next line if video_id.blank?
+
+              leading = content[/\A\s*/]
+              trailing = content[/\s*\z/]
+              "#{leading}https://www.bilibili.com/video/#{video_id}#{trailing}#{newline}"
+            end
+            .join
+        end
+
         def to_html
           match = REGEX.match(@url) || INLINE_REGEX.match(@url)
           return unless match
@@ -111,5 +133,10 @@ after_initialize do
       iframe = ::Onebox::Engine::BilibiliOnebox.iframe_html(video_id)
       link.replace(iframe)
     end
+  end
+
+  # 发帖落库前规范化 b23 短链接。
+  on(:before_create_post) do |post, _params|
+    post.raw = ::Onebox::Engine::BilibiliOnebox.expand_short_links(post.raw)
   end
 end
