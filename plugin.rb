@@ -8,6 +8,13 @@
 
 require "uri"
 require_dependency "final_destination"
+register_css <<~CSS
+  .bilibili-onebox {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16/9;
+  }
+CSS
 
 after_initialize do
   module ::Onebox
@@ -21,7 +28,7 @@ after_initialize do
         matches_regexp Regexp.union(REGEX, INLINE_REGEX)
 
         def self.iframe_html(video_id)
-          "<iframe src='https://player.bilibili.com/player.html?bvid=#{video_id}&high_quality=1&autoplay=0' scrolling='no' border='0' frameborder='no' width='100%' height='430' allowfullscreen='true'></iframe>"
+          "<iframe class='bilibili-onebox' src='https://player.bilibili.com/player.html?bvid=#{video_id}&high_quality=1&autoplay=0' scrolling='no' border='0' frameborder='no' width='100%' height='100%' allowfullscreen='true'></iframe>"
         end
 
         def self.extract_video_id(url)
