@@ -1,6 +1,6 @@
 # name: discourse-bilibili-onebox
-# about: A Discourse plugin to embed Bilibili videos
-# version: 1.0
+# about: A Discourse plugin to embed Bilibili videos. Modified by Jackzhang144.
+# version: 1.2
 # authors: Appinn
 # url: https://meta.appinn.net/t/topic/55832
 
@@ -8,6 +8,13 @@
 
 require "uri"
 require_dependency "final_destination"
+register_css <<~CSS
+  .bilibili-onebox {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16/9;
+  }
+CSS
 
 after_initialize do
   module ::Onebox
@@ -21,7 +28,7 @@ after_initialize do
         matches_regexp Regexp.union(REGEX, INLINE_REGEX)
 
         def self.iframe_html(video_id)
-          "<iframe src='https://player.bilibili.com/player.html?bvid=#{video_id}&high_quality=1&autoplay=0' scrolling='no' border='0' frameborder='no' width='100%' height='430' allowfullscreen='true'></iframe>"
+          "<iframe class='bilibili-onebox' src='https://player.bilibili.com/player.html?bvid=#{video_id}&high_quality=1&autoplay=0' scrolling='no' border='0' frameborder='no' width='100%' height='100%' allowfullscreen='true'></iframe>"
         end
 
         def self.extract_video_id(url)
@@ -30,22 +37,32 @@ after_initialize do
         end
 
         def self.resolve_short_link(url)
+          Rails.logger.warn("[discourse-bilibili-onebox] resolve short link: #{url}")
           return unless url&.match?(SHORT_LINK_REGEX)
 
           slug =
             begin
               URI.parse(url).path.delete_prefix("/").sub(%r{/*\z}, "")
             rescue URI::InvalidURIError
+              Rails.logger.warn("[discourse-bilibili-onebox] invalid short link url: #{url}")
               nil
             end
           return if slug.blank?
 
           cache_key = "bilibili-short-link:#{slug}"
           cached_video_id = Discourse.cache.read(cache_key)
-          return cached_video_id if cached_video_id.present?
+          if cached_video_id.present?
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link cache hit: #{slug} -> #{cached_video_id}",
+            )
+            return cached_video_id
+          end
 
           # b23 在带尾部 / 时可能返回 200 JSON (-404)，不跳转；强制使用标准化 URL 以确保 302 跳转
           normalized_url = "https://b23.tv/#{slug}"
+          Rails.logger.warn(
+            "[discourse-bilibili-onebox] short link normalized: #{url} -> #{normalized_url}",
+          )
 
           begin
             resolved =
@@ -59,13 +76,55 @@ after_initialize do
                     "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
                 },
               ).resolve
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link resolved to: #{resolved.inspect}",
+            )
             video_id = extract_video_id(resolved) if resolved
             Discourse.cache.write(cache_key, video_id, expires_in: 1.day) if video_id.present?
+            if video_id.present?
+              Rails.logger.warn(
+                "[discourse-bilibili-onebox] short link resolved: #{slug} -> #{video_id}",
+              )
+            else
+              Rails.logger.warn(
+                "[discourse-bilibili-onebox] short link resolved but no video id: #{resolved}",
+              )
+            end
             video_id
           rescue StandardError => e
             Rails.logger.warn("[discourse-bilibili-onebox] short link resolve failed: #{e.message}")
             nil
           end
+        end
+
+        # 将 raw 文本中“单独成行”的 b23 短链接展开为完整的 Bilibili 视频链接。
+        def self.expand_short_links(raw)
+          return raw if raw.blank?
+
+          raw
+            .lines
+            .map do |line|
+              newline = line.end_with?("\n") ? "\n" : ""
+              content = line.delete_suffix("\n")
+              stripped = content.strip
+              next line unless stripped.match?(SHORT_LINK_REGEX)
+              Rails.logger.warn("[discourse-bilibili-onebox] short link matched line: #{stripped}")
+              video_id = resolve_short_link(stripped)
+              if video_id.blank?
+                Rails.logger.warn(
+                  "[discourse-bilibili-onebox] short link resolve returned blank: #{stripped}",
+                )
+                next line
+              end
+
+              leading = content[/\A\s*/]
+              trailing = content[/\s*\z/]
+              Rails.logger.warn(
+                "[discourse-bilibili-onebox] short link expanded: #{stripped} -> #{video_id}",
+              )
+              "#{leading}https://www.bilibili.com/video/#{video_id}#{trailing}#{newline}"
+            end
+            .join
         end
 
         def to_html
@@ -111,5 +170,17 @@ after_initialize do
       iframe = ::Onebox::Engine::BilibiliOnebox.iframe_html(video_id)
       link.replace(iframe)
     end
+  end
+
+  # 发帖落库前规范化 b23 短链接。
+  on(:before_create_post) do |post, _params|
+    original_raw = post.raw
+    expanded_raw = ::Onebox::Engine::BilibiliOnebox.expand_short_links(original_raw)
+    if expanded_raw != original_raw
+      Rails.logger.warn(
+        "[discourse-bilibili-onebox] expanded short links before create (user_id=#{post.user_id})",
+      )
+    end
+    post.raw = expanded_raw
   end
 end
