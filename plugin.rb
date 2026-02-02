@@ -6,6 +6,7 @@
 
 # frozen_string_literal: true
 
+require "net/http"
 require "uri"
 require_dependency "final_destination"
 register_css <<~CSS
@@ -64,6 +65,17 @@ after_initialize do
             "[discourse-bilibili-onebox] short link normalized: #{url} -> #{normalized_url}",
             )
 
+          log_short_link_http_response(
+            normalized_url,
+            max_redirects: 5,
+            timeout: 5,
+            headers: {
+              "User-Agent" =>
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+                  "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
+            },
+          )
+
           begin
             resolved =
               FinalDestination.new(
@@ -95,6 +107,68 @@ after_initialize do
             Rails.logger.warn("[discourse-bilibili-onebox] short link resolve failed: #{e.message}")
             nil
           end
+        end
+
+        def self.log_short_link_http_response(url, max_redirects:, timeout:, headers:)
+          Rails.logger.warn(
+            "[discourse-bilibili-onebox] short link http request: url=#{url} " \
+              "max_redirects=#{max_redirects} timeout=#{timeout} headers=#{headers.inspect}",
+            )
+
+          current_url = url
+          redirects = 0
+
+          loop do
+            uri =
+              begin
+                URI.parse(current_url)
+              rescue URI::InvalidURIError => e
+                Rails.logger.warn(
+                  "[discourse-bilibili-onebox] short link http invalid uri: #{current_url} " \
+                    "(#{e.message})",
+                  )
+                break
+              end
+
+            http = Net::HTTP.new(uri.host, uri.port)
+            http.use_ssl = uri.scheme == "https"
+            http.open_timeout = timeout
+            http.read_timeout = timeout
+
+            request = Net::HTTP::Get.new(uri.request_uri)
+            headers.each { |key, value| request[key] = value }
+
+            response = http.request(request)
+
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link http response: url=#{current_url} " \
+                "status=#{response.code} message=#{response.message}",
+              )
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link http headers: #{response.to_hash.inspect}",
+              )
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link http body:\n#{response.body}",
+              )
+
+            break unless response.is_a?(Net::HTTPRedirection)
+
+            location = response["location"]
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link http redirect: #{current_url} -> #{location}",
+              )
+
+            break if location.blank?
+
+            redirects += 1
+            break if redirects > max_redirects
+
+            current_url = uri.merge(location).to_s
+          end
+        rescue StandardError => e
+          Rails.logger.warn(
+            "[discourse-bilibili-onebox] short link http request failed: #{e.class} #{e.message}",
+            )
         end
 
         # 将 raw 文本中“单独成行”的 b23 短链接展开为完整的 Bilibili 视频链接。
