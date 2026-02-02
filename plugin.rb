@@ -54,7 +54,7 @@ after_initialize do
           if cached_video_id.present?
             Rails.logger.warn(
               "[discourse-bilibili-onebox] short link cache hit: #{slug} -> #{cached_video_id}",
-            )
+              )
             return cached_video_id
           end
 
@@ -62,7 +62,7 @@ after_initialize do
           normalized_url = "https://b23.tv/#{slug}"
           Rails.logger.warn(
             "[discourse-bilibili-onebox] short link normalized: #{url} -> #{normalized_url}",
-          )
+            )
 
           begin
             resolved =
@@ -70,25 +70,25 @@ after_initialize do
                 normalized_url,
                 max_redirects: 5,
                 timeout: 5,
-                request_headers: {
+                headers: {
                   "User-Agent" =>
                     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
-                    "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
+                      "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
                 },
-              ).resolve
+                ).resolve
             Rails.logger.warn(
               "[discourse-bilibili-onebox] short link resolved to: #{resolved.inspect}",
-            )
+              )
             video_id = extract_video_id(resolved) if resolved
             Discourse.cache.write(cache_key, video_id, expires_in: 1.day) if video_id.present?
             if video_id.present?
               Rails.logger.warn(
                 "[discourse-bilibili-onebox] short link resolved: #{slug} -> #{video_id}",
-              )
+                )
             else
               Rails.logger.warn(
                 "[discourse-bilibili-onebox] short link resolved but no video id: #{resolved}",
-              )
+                )
             end
             video_id
           rescue StandardError => e
@@ -104,26 +104,26 @@ after_initialize do
           raw
             .lines
             .map do |line|
-              newline = line.end_with?("\n") ? "\n" : ""
-              content = line.delete_suffix("\n")
-              stripped = content.strip
-              next line unless stripped.match?(SHORT_LINK_REGEX)
-              Rails.logger.warn("[discourse-bilibili-onebox] short link matched line: #{stripped}")
-              video_id = resolve_short_link(stripped)
-              if video_id.blank?
-                Rails.logger.warn(
-                  "[discourse-bilibili-onebox] short link resolve returned blank: #{stripped}",
-                )
-                next line
-              end
-
-              leading = content[/\A\s*/]
-              trailing = content[/\s*\z/]
+            newline = line.end_with?("\n") ? "\n" : ""
+            content = line.delete_suffix("\n")
+            stripped = content.strip
+            next line unless stripped.match?(SHORT_LINK_REGEX)
+            Rails.logger.warn("[discourse-bilibili-onebox] short link matched line: #{stripped}")
+            video_id = resolve_short_link(stripped)
+            if video_id.blank?
               Rails.logger.warn(
-                "[discourse-bilibili-onebox] short link expanded: #{stripped} -> #{video_id}",
-              )
-              "#{leading}https://www.bilibili.com/video/#{video_id}#{trailing}#{newline}"
+                "[discourse-bilibili-onebox] short link resolve returned blank: #{stripped}",
+                )
+              next line
             end
+
+            leading = content[/\A\s*/]
+            trailing = content[/\s*\z/]
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link expanded: #{stripped} -> #{video_id}",
+              )
+            "#{leading}https://www.bilibili.com/video/#{video_id}#{trailing}#{newline}"
+          end
             .join
         end
 
@@ -153,9 +153,9 @@ after_initialize do
       parent = link.parent
       block_link =
         parent&.name == "p" &&
-          parent.element_children.length == 1 &&
-          parent.element_children.first == link &&
-          parent.text.strip == href
+        parent.element_children.length == 1 &&
+        parent.element_children.first == link &&
+        parent.text.strip == href
       next unless block_link || classes.include?("onebox")
 
       case uri.host
@@ -179,7 +179,7 @@ after_initialize do
     if expanded_raw != original_raw
       Rails.logger.warn(
         "[discourse-bilibili-onebox] expanded short links before create (user_id=#{post.user_id})",
-      )
+        )
     end
     post.raw = expanded_raw
   end
