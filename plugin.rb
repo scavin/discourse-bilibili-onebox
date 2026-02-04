@@ -6,7 +6,6 @@
 
 # frozen_string_literal: true
 
-require "net/http"
 require "uri"
 require_dependency "final_destination"
 register_css <<~CSS
@@ -41,6 +40,7 @@ after_initialize do
           Rails.logger.warn("[discourse-bilibili-onebox] resolve short link: #{url}")
           return unless url&.match?(SHORT_LINK_REGEX)
 
+          start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           slug =
             begin
               URI.parse(url).path.delete_prefix("/").sub(%r{/*\z}, "")
@@ -49,6 +49,7 @@ after_initialize do
               nil
             end
           return if slug.blank?
+          Rails.logger.warn("[discourse-bilibili-onebox] short link slug: #{slug}")
 
           cache_key = "bilibili-short-link:#{slug}"
           cached_video_id = Discourse.cache.read(cache_key)
@@ -58,6 +59,7 @@ after_initialize do
               )
             return cached_video_id
           end
+          Rails.logger.warn("[discourse-bilibili-onebox] short link cache miss: #{cache_key}")
 
           # b23 在带尾部 / 时可能返回 200 JSON (-404)，不跳转；强制使用标准化 URL 以确保 302 跳转
           normalized_url = "https://b23.tv/#{slug}"
@@ -65,31 +67,33 @@ after_initialize do
             "[discourse-bilibili-onebox] short link normalized: #{url} -> #{normalized_url}",
             )
 
-          log_short_link_http_response(
-            normalized_url,
-            max_redirects: 5,
-            timeout: 5,
-            headers: {
+          begin
+            request_headers = {
               "User-Agent" =>
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
                   "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
-            },
-          )
+            }
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link request options: " \
+                "http_verb=get max_redirects=5 timeout=5 headers=#{request_headers.inspect}",
+              )
 
-          begin
-            resolved =
+            fd =
               FinalDestination.new(
                 normalized_url,
                 max_redirects: 5,
                 timeout: 5,
-                headers: {
-                  "User-Agent" =>
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
-                      "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
-                },
-                ).resolve
+                http_verb: :get,
+                headers: request_headers,
+                )
+            resolved = fd.resolve
+            duration_ms =
+              ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(1)
             Rails.logger.warn(
-              "[discourse-bilibili-onebox] short link resolved to: #{resolved.inspect}",
+              "[discourse-bilibili-onebox] short link resolved to: #{resolved.inspect} " \
+                "(status=#{fd.status} status_code=#{fd.status_code} content_type=#{fd.content_type} " \
+                "redirected=#{fd.redirected?} hostname=#{fd.hostname} cookie=#{fd.cookie.inspect} " \
+                "ignored=#{fd.ignored.inspect} duration_ms=#{duration_ms})",
               )
             video_id = extract_video_id(resolved) if resolved
             Discourse.cache.write(cache_key, video_id, expires_in: 1.day) if video_id.present?
@@ -99,76 +103,17 @@ after_initialize do
                 )
             else
               Rails.logger.warn(
-                "[discourse-bilibili-onebox] short link resolved but no video id: #{resolved}",
+                "[discourse-bilibili-onebox] short link resolved but no video id: #{resolved.inspect}",
                 )
             end
             video_id
           rescue StandardError => e
-            Rails.logger.warn("[discourse-bilibili-onebox] short link resolve failed: #{e.message}")
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] short link resolve failed: #{e.class} #{e.message} " \
+                "backtrace=#{Array(e.backtrace).first(3).inspect}",
+              )
             nil
           end
-        end
-
-        def self.log_short_link_http_response(url, max_redirects:, timeout:, headers:)
-          Rails.logger.warn(
-            "[discourse-bilibili-onebox] short link http request: url=#{url} " \
-              "max_redirects=#{max_redirects} timeout=#{timeout} headers=#{headers.inspect}",
-            )
-
-          current_url = url
-          redirects = 0
-
-          loop do
-            uri =
-              begin
-                URI.parse(current_url)
-              rescue URI::InvalidURIError => e
-                Rails.logger.warn(
-                  "[discourse-bilibili-onebox] short link http invalid uri: #{current_url} " \
-                    "(#{e.message})",
-                  )
-                break
-              end
-
-            http = Net::HTTP.new(uri.host, uri.port)
-            http.use_ssl = uri.scheme == "https"
-            http.open_timeout = timeout
-            http.read_timeout = timeout
-
-            request = Net::HTTP::Get.new(uri.request_uri)
-            headers.each { |key, value| request[key] = value }
-
-            response = http.request(request)
-
-            Rails.logger.warn(
-              "[discourse-bilibili-onebox] short link http response: url=#{current_url} " \
-                "status=#{response.code} message=#{response.message}",
-              )
-            Rails.logger.warn(
-              "[discourse-bilibili-onebox] short link http headers: #{response.to_hash.inspect}",
-              )
-            Rails.logger.warn(
-              "[discourse-bilibili-onebox] short link http body:\n#{response.body}",
-              )
-
-            break unless response.is_a?(Net::HTTPRedirection)
-
-            location = response["location"]
-            Rails.logger.warn(
-              "[discourse-bilibili-onebox] short link http redirect: #{current_url} -> #{location}",
-              )
-
-            break if location.blank?
-
-            redirects += 1
-            break if redirects > max_redirects
-
-            current_url = uri.merge(location).to_s
-          end
-        rescue StandardError => e
-          Rails.logger.warn(
-            "[discourse-bilibili-onebox] short link http request failed: #{e.class} #{e.message}",
-            )
         end
 
         # 将 raw 文本中“单独成行”的 b23 短链接展开为完整的 Bilibili 视频链接。
