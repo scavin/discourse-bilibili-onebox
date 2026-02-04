@@ -201,4 +201,59 @@ after_initialize do
     end
     post.raw = expanded_raw
   end
+
+  # 实现思路与过程：
+  # 1) Discourse 的 :before_edit_post 回调触发时，post 已经被写入，修改 fields[:raw] 无法入库；
+  # 2) 因此改为在 PostRevisor#revise! 最早阶段规范化短链，确保进入标准的校验/修订/烘焙流程；
+  # 3) 通过 prepend 覆盖 revise!，只在 raw 中存在短链时才转换并记录日志，避免影响其它编辑；
+  # 4) 最后调用 super 让原有编辑流程继续执行，保证兼容性与一致性。
+  module ::DiscourseBilibiliOnebox
+    module PostRevisorPatch
+      def revise!(editor, fields, opts = {})
+        raw = fields[:raw] || fields["raw"]
+        if raw.present?
+          matched_lines = raw.lines.count do |line|
+            line.strip.match?(::Onebox::Engine::BilibiliOnebox::SHORT_LINK_REGEX)
+          end
+          if matched_lines > 0
+            editor_id = editor&.id
+            editor_username = editor&.username
+            Rails.logger.warn(
+              "[discourse-bilibili-onebox] before revise normalize short links " \
+                "(post_id=#{@post&.id} user_id=#{@post&.user_id} editor_id=#{editor_id} " \
+                "editor_username=#{editor_username} raw_bytes=#{raw.bytesize} " \
+                "matched_lines=#{matched_lines})",
+              )
+
+            # 提前规范化短链，确保编辑走标准的校验/修订/烘焙流程。
+            expanded_raw = ::Onebox::Engine::BilibiliOnebox.expand_short_links(raw)
+            if expanded_raw != raw
+              Rails.logger.warn(
+                "[discourse-bilibili-onebox] expanded short links before revise " \
+                  "(post_id=#{@post&.id} user_id=#{@post&.user_id} editor_id=#{editor_id} " \
+                  "editor_username=#{editor_username} raw_bytes=#{raw.bytesize} " \
+                  "expanded_bytes=#{expanded_raw.bytesize})",
+                )
+              fields = fields.dup
+              fields[:raw] = expanded_raw
+              fields["raw"] = expanded_raw if fields.key?("raw")
+            else
+              Rails.logger.warn(
+                "[discourse-bilibili-onebox] no short links expanded before revise " \
+                  "(post_id=#{@post&.id} user_id=#{@post&.user_id} editor_id=#{editor_id} " \
+                  "editor_username=#{editor_username})",
+                )
+            end
+          end
+        end
+
+        super(editor, fields, opts)
+      end
+    end
+  end
+
+  # 避免重复 prepend 导致调用链混乱。
+  unless ::PostRevisor.ancestors.include?(::DiscourseBilibiliOnebox::PostRevisorPatch)
+    ::PostRevisor.prepend(::DiscourseBilibiliOnebox::PostRevisorPatch)
+  end
 end
