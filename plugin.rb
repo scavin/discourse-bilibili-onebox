@@ -96,7 +96,7 @@ after_initialize do
               return
             end
 
-            payload = JSON.parse(response.body)
+            payload = ::JSON.parse(response.body)
             code = payload["code"]
             msg = payload["msg"]
             data = payload["data"]
