@@ -222,26 +222,26 @@ after_initialize do
           raw
             .lines
             .map do |line|
-            newline = line.end_with?("\n") ? "\n" : ""
-            content = line.delete_suffix("\n")
-            stripped = content.strip
-            next line unless stripped.match?(SHORT_LINK_REGEX)
-            Rails.logger.warn("[discourse-bilibili-onebox] short link matched line: #{stripped}")
-            video_id = resolve_short_link(stripped)
-            if video_id.blank?
-              Rails.logger.warn(
-                "[discourse-bilibili-onebox] short link resolve returned blank: #{stripped}",
-                )
-              next line
-            end
+              newline = line.end_with?("\n") ? "\n" : ""
+              content = line.delete_suffix("\n")
+              stripped = content.strip
+              next line unless stripped.match?(SHORT_LINK_REGEX)
+              Rails.logger.warn("[discourse-bilibili-onebox] short link matched line: #{stripped}")
+              video_id = resolve_short_link(stripped)
+              if video_id.blank?
+                Rails.logger.warn(
+                  "[discourse-bilibili-onebox] short link resolve returned blank: #{stripped}",
+                  )
+                next line
+              end
 
-            leading = content[/\A\s*/]
-            trailing = content[/\s*\z/]
-            Rails.logger.warn(
-              "[discourse-bilibili-onebox] short link expanded: #{stripped} -> #{video_id}",
-              )
-            "#{leading}https://www.bilibili.com/video/#{video_id}#{trailing}#{newline}"
-          end
+              leading = content[/\A\s*/]
+              trailing = content[/\s*\z/]
+              Rails.logger.warn(
+                "[discourse-bilibili-onebox] short link expanded: #{stripped} -> #{video_id}",
+                )
+              "#{leading}https://www.bilibili.com/video/#{video_id}#{trailing}#{newline}"
+            end
             .join
         end
 
@@ -252,32 +252,32 @@ after_initialize do
           raw
             .lines
             .map do |line|
-            newline = line.end_with?("\n") ? "\n" : ""
-            content = line.delete_suffix("\n")
-            stripped = content.strip
-            match = LIVE_REGEX.match(stripped)
-            next line unless match
-            input_id = match[1]
-            room_id = resolve_live_room_id(input_id)
-            next line if room_id.blank? || room_id.to_s == input_id.to_s
+              newline = line.end_with?("\n") ? "\n" : ""
+              content = line.delete_suffix("\n")
+              stripped = content.strip
+              match = LIVE_REGEX.match(stripped)
+              next line unless match
+              input_id = match[1]
+              room_id = resolve_live_room_id(input_id)
+              next line if room_id.blank? || room_id.to_s == input_id.to_s
 
-            leading = content[/\A\s*/]
-            trailing = content[/\s*\z/]
+              leading = content[/\A\s*/]
+              trailing = content[/\s*\z/]
 
-            begin
-              uri = URI.parse(stripped)
-              new_path = uri.path.sub(%r{/\d+}, "/#{room_id}")
-              next line if new_path == uri.path
-              uri.path = new_path
-              expanded = "#{leading}#{uri}#{trailing}#{newline}"
-              Rails.logger.warn(
-                "[discourse-bilibili-onebox] live link expanded: #{stripped} -> #{uri}",
-                )
-              expanded
-            rescue URI::InvalidURIError
-              line
+              begin
+                uri = URI.parse(stripped)
+                new_path = uri.path.sub(%r{/\d+}, "/#{room_id}")
+                next line if new_path == uri.path
+                uri.path = new_path
+                expanded = "#{leading}#{uri}#{trailing}#{newline}"
+                Rails.logger.warn(
+                  "[discourse-bilibili-onebox] live link expanded: #{stripped} -> #{uri}",
+                  )
+                expanded
+              rescue URI::InvalidURIError
+                line
+              end
             end
-          end
             .join
         end
 
@@ -409,7 +409,7 @@ after_initialize do
   end
 
   # 避免重复 prepend 导致调用链混乱。
-  unless ::PostRevisor.ancestors.include?(::DiscourseBilibiliOnebox::PostRevisorPatch)
+  if ::PostRevisor.ancestors.exclude?(::DiscourseBilibiliOnebox::PostRevisorPatch)
     ::PostRevisor.prepend(::DiscourseBilibiliOnebox::PostRevisorPatch)
   end
 end
