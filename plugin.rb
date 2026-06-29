@@ -1,6 +1,6 @@
 # name: discourse-bilibili-onebox
 # about: A Discourse plugin to embed Bilibili videos. Modified by Jackzhang144.
-# version: 1.3
+# version: 1.4
 # authors: Appinn, modified by Jackzhang144.
 
 # frozen_string_literal: true
@@ -30,13 +30,24 @@ after_initialize do
         LIVE_INLINE_REGEX = /href="https?:\/\/live\.bilibili\.com\/(?:blanc\/)?(\d+)(?:[\/?#].*)?"[^>]*?class="inline-onebox"/
         matches_regexp Regexp.union(REGEX, INLINE_REGEX, LIVE_REGEX, LIVE_INLINE_REGEX)
 
-        def self.iframe_html(video_id)
-          "<iframe class='bilibili-onebox' src='https://player.bilibili.com/player.html?bvid=#{video_id}&high_quality=1&autoplay=0' scrolling='no' border='0' frameborder='no' width='100%' height='100%' allowfullscreen='true'></iframe>"
+        def self.iframe_html(video_id, page_number = nil)
+          page_param = page_number.present? ? "&p=#{page_number}" : ""
+          "<iframe class='bilibili-onebox' src='https://player.bilibili.com/player.html?bvid=#{video_id}#{page_param}&high_quality=1&autoplay=0' scrolling='no' border='0' frameborder='no' width='100%' height='100%' allowfullscreen='true'></iframe>"
         end
 
         def self.extract_video_id(url)
           match = REGEX.match(url)
           match && match[2]
+        end
+
+        def self.extract_page_number(url)
+          # INLINE_REGEX receives the complete anchor HTML rather than a bare URL.
+          candidate = url[/href="([^"]+)"/, 1] || url
+          uri = URI.parse(candidate.gsub("&amp;", "&"))
+          page = URI.decode_www_form(uri.query.to_s).assoc("p")&.last
+          page if page&.match?(/\A[1-9]\d*\z/)
+        rescue URI::InvalidURIError, ArgumentError
+          nil
         end
 
         def self.extract_live_room_id(url)
@@ -285,7 +296,8 @@ after_initialize do
           video_match = REGEX.match(@url) || INLINE_REGEX.match(@url)
           if video_match
             video_id = video_match[2]
-            return self.class.iframe_html(video_id)
+            page_number = self.class.extract_page_number(@url)
+            return self.class.iframe_html(video_id, page_number)
           end
 
           live_match = LIVE_REGEX.match(@url) || LIVE_INLINE_REGEX.match(@url)
@@ -333,7 +345,8 @@ after_initialize do
 
       iframe =
         if video_id
-          ::Onebox::Engine::BilibiliOnebox.iframe_html(video_id)
+          page_number = ::Onebox::Engine::BilibiliOnebox.extract_page_number(href)
+          ::Onebox::Engine::BilibiliOnebox.iframe_html(video_id, page_number)
         elsif room_id
           ::Onebox::Engine::BilibiliOnebox.live_iframe_html(room_id)
         end

@@ -13,6 +13,8 @@
 
 `[date=2025-11-20 timezone="Asia/Shanghai"]` 已支持 `b23.tv` 短链接
 
+`[date=2026-06-29 timezone="Asia/Shanghai"]` 已支持通过 `?p=4` 指定视频选集
+
 ### 安装方式
 
 在 `app.yml` 文件的 `Plugins go here` 部分
@@ -48,6 +50,7 @@ hooks:
 * `https://www.bilibili.com/video/BV1WEgJzMEK3/?spm_id_from=333.1387.homepage.video_card.click&vd_source=b0a719e1950c150a97859195679d417a`
 * `https://www.bilibili.com/video/BV1WEgJzMEK3/`
 * `https://www.bilibili.com/video/BV1WEgJzMEK3`
+* `https://www.bilibili.com/video/BV1V7411h7cX?p=4`
 * `https://b23.tv/hiS7rgR`
 
 此问题已修复。<s>目前有个 bug，不带 `/` 结尾的链接不会工作，手动加上 `/` 即可。</s>

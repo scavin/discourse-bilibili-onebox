@@ -13,6 +13,8 @@ The code is intentionally tiny (AI-assisted) and already powers the Appinn commu
 
 `[date=2025-11-20 timezone="Asia/Shanghai"]` Support for `b23.tv` short links is available.
 
+`[date=2026-06-29 timezone="Asia/Shanghai"]` Video-part selection through `?p=4` is supported.
+
 ### Installation
 
 Edit `app.yml` and locate the `Plugins go here` section:
@@ -48,6 +50,7 @@ Paste a Bilibili URL on its own line inside the composer. Links copied from the 
 * `https://www.bilibili.com/video/BV1WEgJzMEK3/?spm_id_from=333.1387.homepage.video_card.click&vd_source=b0a719e1950c150a97859195679d417a`
 * `https://www.bilibili.com/video/BV1WEgJzMEK3/`
 * `https://www.bilibili.com/video/BV1WEgJzMEK3`
+* `https://www.bilibili.com/video/BV1V7411h7cX?p=4`
 * `https://b23.tv/hiS7rgR`
 
 The old bug where URLs without a trailing slash refused to render has been fixed.
